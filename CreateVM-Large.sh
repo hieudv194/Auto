@@ -3,27 +3,11 @@
 # Định nghĩa các biến
 instance_type_large="c7a.2xlarge"
 user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/vixmr-lm8"
-user_data_file="/tmp/user_data.sh"
 input_dir="/tmp/instance_info"  # Thư mục chứa thông tin instance
 log_dir="/tmp/logs"  # Thư mục lưu log
 
 # Tạo thư mục lưu log
 mkdir -p "$log_dir"
-
-# Tải User Data từ GitHub nếu file không tồn tại
-if [ ! -f "$user_data_file" ]; then
-    echo "Downloading User Data from GitHub..."
-    curl -s -L "$user_data_url" -o "$user_data_file"
-fi
-
-# Kiểm tra xem file User Data có tồn tại và không rỗng không
-if [ ! -s "$user_data_file" ]; then
-    echo "Error: Failed to download User Data from GitHub."
-    exit 1
-fi
-
-# Mã hóa User Data sang base64
-user_data_base64=$(base64 -w 0 "$user_data_file")
 
 # Định nghĩa danh sách các vùng
 declare -a regions=("us-east-1" "us-west-2" "us-east-2")
@@ -79,15 +63,6 @@ for region in "${regions[@]}"; do
 
     echo "Instance $instance_id is now running with type $instance_type_large."
 
-    # Cập nhật User Data
-    echo "Updating User Data for instance $instance_id..."
-    aws ec2 modify-instance-attribute \
-        --instance-id "$instance_id" \
-        --user-data "$user_data_base64" \
-        --region "$region"
-
-    echo "User Data has been updated for instance $instance_id."
-
     # Lấy địa chỉ IP public của instance
     public_ip=$(aws ec2 describe-instances \
         --instance-ids "$instance_id" \
@@ -101,9 +76,9 @@ for region in "${regions[@]}"; do
     echo "Waiting for SSH to be available..."
     sleep 60  # Đợi 60 giây để instance khởi động hoàn toàn
 
-    # Kết nối SSH và chạy User Data
-    echo "Running User Data on instance $instance_id..."
-    ssh -i "$key_file" -o StrictHostKeyChecking=no ec2-user@"$public_ip" "sudo bash /var/lib/cloud/instances/$instance_id/user-data.txt" > "$log_dir/ssh_log_$instance_id.txt" 2>&1
+    # Tải lại script từ GitHub và chạy trực tiếp qua SSH
+    echo "Running User Data manually on instance $instance_id..."
+    ssh -i "$key_file" -o StrictHostKeyChecking=no ec2-user@"$public_ip" "curl -s -L $user_data_url | sudo bash" > "$log_dir/ssh_log_$instance_id.txt" 2>&1
 
     echo "User Data executed successfully on instance $instance_id in region $region."
 done
