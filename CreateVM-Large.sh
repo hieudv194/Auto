@@ -49,7 +49,7 @@ for region in "${regions[@]}"; do
 
     # Lấy Public IP nếu chưa có
     if [ -z "$public_ip" ] || [ "$public_ip" == "None" ]; then
-        for attempt in {1..5}; do
+        for attempt in {1..6}; do
             public_ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --region "$region" --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
             if [ "$public_ip" != "None" ]; then
                 echo "public_ip=$public_ip" >> "$input_file"
@@ -65,7 +65,7 @@ for region in "${regions[@]}"; do
     fi
 
     # Kết nối SSH & Chạy miner
-    for attempt in {1..5}; do
+    for attempt in {1..6}; do
         echo "Attempting SSH connection ($attempt/5)..."
         ssh -i "$key_file" -o StrictHostKeyChecking=no -o ConnectTimeout=10 ec2-user@"$public_ip" "echo 'SSH is ready'" > /dev/null 2>&1
         if [ $? -eq 0 ]; then
