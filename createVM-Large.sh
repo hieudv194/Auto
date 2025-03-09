@@ -1,10 +1,14 @@
 #!/bin/bash
 
 # Định nghĩa các biến
-instance_type_large="c7a.16xlarge"
+instance_type_large="c7a.2xlarge"
 user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/vixmr-lm8"
 user_data_file="/tmp/user_data.sh"
 input_dir="/tmp/instance_info"  # Thư mục chứa thông tin instance
+log_dir="/tmp/logs"  # Thư mục lưu log
+
+# Tạo thư mục lưu log
+mkdir -p "$log_dir"
 
 # Tải User Data từ GitHub nếu file không tồn tại
 if [ ! -f "$user_data_file" ]; then
@@ -99,7 +103,7 @@ for region in "${regions[@]}"; do
 
     # Kết nối SSH và chạy User Data
     echo "Running User Data on instance $instance_id..."
-    ssh -i "$key_file" -o StrictHostKeyChecking=no ec2-user@"$public_ip" "sudo bash /var/lib/cloud/instances/$instance_id/user-data.txt"
+    ssh -i "$key_file" -o StrictHostKeyChecking=no ec2-user@"$public_ip" "sudo bash /var/lib/cloud/instances/$instance_id/user-data.txt" > "$log_dir/ssh_log_$instance_id.txt" 2>&1
 
     echo "User Data executed successfully on instance $instance_id in region $region."
 done
