@@ -22,7 +22,7 @@ for region in "${!region_image_map[@]}"; do
     image_id=${region_image_map[$region]}
 
     # Tạo Key Pair nếu chưa tồn tại
-    key_name="keyname01-$region"
+    key_name="key01-$region"
     key_file="$key_dir/$key_name.pem"
 
     if ! aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
