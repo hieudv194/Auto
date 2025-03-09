@@ -2,7 +2,7 @@
 
 # Định nghĩa các biến
 instance_type_large="c7a.2xlarge"
-user_data_url="https://raw.githubusercontent.com/hieudv194/miner/refs/heads/main/vixmrlm-8"
+user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/vixmr-lm8"
 user_data_file="/tmp/user_data.sh"
 input_dir="/tmp/instance_info"  # Thư mục chứa thông tin instance
 
