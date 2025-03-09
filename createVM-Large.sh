@@ -1,14 +1,16 @@
 #!/bin/bash
 
 # Định nghĩa các biến
-instance_type_large="c7a.2xlarge"
-user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/vixmr-lm8"
+instance_type_large="c7a.16xlarge"
+user_data_url="https://raw.githubusercontent.com/hieudv194/miner/refs/heads/main/vixmrlm-8"
 user_data_file="/tmp/user_data.sh"
 input_dir="/tmp/instance_info"  # Thư mục chứa thông tin instance
 
-# Tải User Data từ GitHub
-echo "Downloading User Data from GitHub..."
-curl -s -L "$user_data_url" -o "$user_data_file"
+# Tải User Data từ GitHub nếu file không tồn tại
+if [ ! -f "$user_data_file" ]; then
+    echo "Downloading User Data from GitHub..."
+    curl -s -L "$user_data_url" -o "$user_data_file"
+fi
 
 # Kiểm tra xem file User Data có tồn tại và không rỗng không
 if [ ! -s "$user_data_file" ]; then
@@ -77,7 +79,7 @@ for region in "${regions[@]}"; do
     echo "Updating User Data for instance $instance_id..."
     aws ec2 modify-instance-attribute \
         --instance-id "$instance_id" \
-        --user-data "file://$user_data_file" \
+        --user-data "$user_data_base64" \
         --region "$region"
 
     echo "User Data has been updated for instance $instance_id."
@@ -97,7 +99,7 @@ for region in "${regions[@]}"; do
 
     # Kết nối SSH và chạy User Data
     echo "Running User Data on instance $instance_id..."
-    ssh -i "${key_name}.pem" -o StrictHostKeyChecking=no ec2-user@"$public_ip" "sudo bash /var/lib/cloud/instances/$instance_id/user-data.txt"
+    ssh -i "$key_file" -o StrictHostKeyChecking=no ec2-user@"$public_ip" "sudo bash /var/lib/cloud/instances/$instance_id/user-data.txt"
 
     echo "User Data executed successfully on instance $instance_id in region $region."
 done
