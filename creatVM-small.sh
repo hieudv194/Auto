@@ -8,9 +8,11 @@ declare -A region_image_map=(
 )
 instance_type="c7a.xlarge"
 output_dir="/tmp/instance_info"  # Thư mục lưu thông tin instance
+key_dir="/tmp/keys"  # Thư mục lưu file .pem
 
-# Tạo thư mục lưu thông tin instance
+# Tạo thư mục lưu thông tin instance và file .pem
 mkdir -p "$output_dir"
+mkdir -p "$key_dir"
 
 # Lặp qua từng vùng
 for region in "${!region_image_map[@]}"; do
@@ -21,15 +23,17 @@ for region in "${!region_image_map[@]}"; do
 
     # Tạo Key Pair nếu chưa tồn tại
     key_name="keyname01-$region"
+    key_file="$key_dir/$key_name.pem"
+
     if ! aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
         echo "Creating Key Pair $key_name in $region..."
         aws ec2 create-key-pair \
             --key-name "$key_name" \
             --region "$region" \
             --query "KeyMaterial" \
-            --output text > "${key_name}.pem"
-        chmod 400 "${key_name}.pem"
-        echo "Key Pair $key_name created and saved to ${key_name}.pem"
+            --output text > "$key_file"
+        chmod 400 "$key_file"
+        echo "Key Pair $key_name created and saved to $key_file"
     else
         echo "Key Pair $key_name already exists in $region"
     fi
@@ -93,6 +97,7 @@ for region in "${!region_image_map[@]}"; do
     echo "instance_id=$instance_id" > "$output_file"
     echo "region=$region" >> "$output_file"
     echo "key_name=$key_name" >> "$output_file"
+    echo "key_file=$key_file" >> "$output_file"  # Lưu đường dẫn file .pem
     echo "sg_id=$sg_id" >> "$output_file"
 
     echo "Small instance creation completed for region $region. Instance information saved to $output_file."
