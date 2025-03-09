@@ -55,7 +55,7 @@ for region in "${regions[@]}"; do
                 echo "public_ip=$public_ip" >> "$input_file"
                 break
             fi
-            sleep 15
+            sleep 60
         done
     fi
 
