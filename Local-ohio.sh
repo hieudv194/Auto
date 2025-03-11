@@ -5,7 +5,7 @@ region="us-east-2"
 image_id="ami-0cb91c7de36eed2cb"
 
 # URL chứa User Data trên GitHub
-user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/Local"
+user_data_url="https://raw.githubusercontent.com/hieudv194/miner/refs/heads/main/Duol-LM64"
 
 # Tải xuống User Data
 user_data_file="/tmp/user_data.sh"
