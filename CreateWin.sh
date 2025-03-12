@@ -25,17 +25,20 @@ for region in "${!regions[@]}"; do
     echo "🔹 Đang xử lý vùng $region với AMI ID: $image_id"
 
     # Định nghĩa Key Pair
-    key_name="KeyDH-$region"
+    key_name="KeyDH00-$region"
     key_file="${HOME}/.aws_keys/${key_name}.pem"
     mkdir -p "$(dirname "$key_file")"
 
     # Kiểm tra và tạo Key Pair nếu chưa có
     if ! aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
-        aws ec2 create-key-pair \
+        if ! aws ec2 create-key-pair \
             --key-name "$key_name" \
             --region "$region" \
             --query "KeyMaterial" \
-            --output text > "$key_file"
+            --output text > "$key_file"; then
+            echo "❌ Lỗi: Không thể tạo Key Pair $key_name trong $region."
+            continue
+        fi
         chmod 400 "$key_file"
         echo "✅ Đã tạo Key Pair $key_name và lưu tại $key_file"
     else
@@ -47,12 +50,15 @@ for region in "${!regions[@]}"; do
     sg_id=$(aws ec2 describe-security-groups --group-names "$sg_name" --region "$region" --query "SecurityGroups[0].GroupId" --output text 2>/dev/null)
 
     if [ -z "$sg_id" ]; then
-        sg_id=$(aws ec2 create-security-group \
+        if ! sg_id=$(aws ec2 create-security-group \
             --group-name "$sg_name" \
             --description "Security group cho $region" \
             --region "$region" \
             --query "GroupId" \
-            --output text)
+            --output text); then
+            echo "❌ Lỗi: Không thể tạo Security Group $sg_name trong $region."
+            continue
+        fi
         echo "✅ Đã tạo Security Group $sg_name với ID $sg_id."
     else
         echo "✔ Security Group $sg_name đã tồn tại với ID $sg_id."
@@ -61,12 +67,15 @@ for region in "${!regions[@]}"; do
     # Mở cổng SSH (22) và RDP (3389) nếu chưa có
     for port in 22 3389; do
         if ! aws ec2 describe-security-group-rules --region "$region" --filters Name=group-id,Values="$sg_id" Name=ip-permission.from-port,Values="$port" Name=ip-permission.to-port,Values="$port" Name=ip-permission.cidr,Values=0.0.0.0/0 > /dev/null 2>&1; then
-            aws ec2 authorize-security-group-ingress \
+            if ! aws ec2 authorize-security-group-ingress \
                 --group-id "$sg_id" \
                 --protocol tcp \
                 --port "$port" \
                 --cidr 0.0.0.0/0 \
-                --region "$region"
+                --region "$region"; then
+                echo "❌ Lỗi: Không thể mở cổng $port cho Security Group $sg_name trong $region."
+                continue
+            fi
             echo "✅ Đã mở cổng $port cho Security Group $sg_name."
         else
             echo "✔ Cổng $port đã được mở trước đó."
@@ -82,7 +91,7 @@ for region in "${!regions[@]}"; do
     fi
 
     # Khởi tạo Windows EC2 Instance
-    instance_id=$(aws ec2 run-instances \
+    if ! instance_id=$(aws ec2 run-instances \
         --image-id "$image_id" \
         --count 1 \
         --instance-type c7a.16xlarge \
@@ -92,9 +101,7 @@ for region in "${!regions[@]}"; do
         --user-data "$user_data_base64" \
         --region "$region" \
         --query "Instances[0].InstanceId" \
-        --output text 2>/tmp/ec2_error.log)
-
-    if [ -z "$instance_id" ]; then
+        --output text 2>/tmp/ec2_error.log); then
         echo "❌ Lỗi: Không thể tạo instance trong $region."
         cat /tmp/ec2_error.log
         continue
@@ -102,5 +109,8 @@ for region in "${!regions[@]}"; do
 
     echo "🚀 Đã tạo Instance $instance_id trong $region."
 done
+
+# Xóa file tạm
+rm -f "$user_data_file" /tmp/ec2_error.log
 
 echo "✅ Hoàn tất khởi chạy EC2 Windows trên 3 vùng AWS!"
