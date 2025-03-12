@@ -1,6 +1,6 @@
 #!/bin/bash
 
-AWS_REGION="us-east-1"  # Thay đổi nếu cần
+AWS_REGION="us-east-2"  # Thay đổi nếu cần
 VPC_NAME="MiningVPC"
 SUBNET_CIDR="10.0.1.0/24"
 SECURITY_GROUP_NAME="MiningSecurityGroup"
