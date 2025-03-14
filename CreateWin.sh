@@ -16,12 +16,12 @@ declare -A region_image_map=(
 user_data_file="/tmp/Duol-LM64.ps1"
 cat << 'EOF' > "$user_data_file"
 # Duol-LM64.ps1
-# Script để tải xuống, giải nén và chạy XMRig để đào Monero
+# Script để tải xuống, giải nén và chạy XMRig (Windows) để đào Monero
 
-# Đường dẫn tải xuống XMRig
-$xmrigUrl = "https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-linux-static-x64.tar.gz"
-$xmrigTarFile = "xmrig-6.22.2-linux-static-x64.tar.gz"
-$xmrigDir = "xmrig-6.22.2"
+# Đường dẫn tải xuống XMRig (Windows)
+$xmrigUrl = "https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-gcc-win64.zip"
+$xmrigZipFile = "xmrig-6.22.2-gcc-win64.zip"
+$xmrigDir = "xmrig-6.22.2-gcc-win64"
 
 # Thư mục làm việc
 $workingDir = "C:\Miner"
@@ -32,24 +32,17 @@ Set-Location -Path $workingDir
 
 # Tải xuống XMRig
 Write-Output "Đang tải xuống XMRig..."
-Invoke-WebRequest -Uri $xmrigUrl -OutFile $xmrigTarFile
+Invoke-WebRequest -Uri $xmrigUrl -OutFile $xmrigZipFile
 
 # Kiểm tra xem file đã tải xuống thành công chưa
-if (-not (Test-Path -Path $xmrigTarFile)) {
+if (-not (Test-Path -Path $xmrigZipFile)) {
     Write-Output "Lỗi: Không thể tải xuống XMRig."
     exit 1
 }
 
-# Giải nén file tar.gz (sử dụng 7-Zip)
+# Giải nén file zip (sử dụng Expand-Archive)
 Write-Output "Đang giải nén XMRig..."
-$7zipPath = "$env:ProgramFiles\7-Zip\7z.exe"
-if (-not (Test-Path -Path $7zipPath)) {
-    Write-Output "7-Zip không được cài đặt. Vui lòng cài đặt 7-Zip trước."
-    exit 1
-}
-
-# Giải nén file tar.gz
-Start-Process -FilePath $7zipPath -ArgumentList "x `"$xmrigTarFile`" -o`"$workingDir`"" -Wait
+Expand-Archive -Path $xmrigZipFile -DestinationPath $workingDir -Force
 
 # Kiểm tra xem thư mục XMRig đã được giải nén chưa
 if (-not (Test-Path -Path "$workingDir\$xmrigDir")) {
