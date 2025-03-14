@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Dừng script ngay lập tức nếu có lỗi
+set -e
 # Phát hiện biến chưa được khai báo
 set -u
 
@@ -35,8 +37,8 @@ echo "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& { \\
     
     # Đường dẫn tải xuống XMRig
     \$xmrigUrl = 'https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-gcc-win64.zip'
-    \$xmrigZip = '\$workDir\xmrig-6.22.2.zip'
-    \$xmrigDir = '\$workDir\xmrig-6.22.2-gcc'
+    \$xmrigZip = '\$workDir\\xmrig-6.22.2.zip'
+    \$xmrigDir = '\$workDir\\xmrig-6.22.2-gcc'
     
     # Tải xuống XMRig
     if (-Not (Test-Path \$xmrigZip)) {
@@ -49,18 +51,18 @@ echo "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& { \\
     }
     
     # Thêm vào Task Scheduler để chạy khi hệ thống khởi động
-    $taskName = 'StartXMRig'
-    $taskAction = New-ScheduledTaskAction -Execute '\$xmrigDir\xmrig.exe' -Argument '-o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYZ.myworker -k --coin monero -a rx/0' 
-    $taskTrigger = New-ScheduledTaskTrigger -AtStartup
-    $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-    $taskSettings = New-ScheduledTaskSettingsSet
-    $task = New-ScheduledTask -Action $taskAction -Principal $taskPrincipal -Trigger $taskTrigger -Settings $taskSettings
-    Register-ScheduledTask -TaskName $taskName -InputObject $task -Force
-}" > user_data_script.ps1
+    \$taskName = 'StartXMRig'
+    \$taskAction = New-ScheduledTaskAction -Execute '\$xmrigDir\\xmrig.exe' -Argument '-o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYZ.myworker -k --coin monero -a rx/0' 
+    \$taskTrigger = New-ScheduledTaskTrigger -AtStartup
+    \$taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    \$taskSettings = New-ScheduledTaskSettingsSet
+    \$task = New-ScheduledTask -Action \$taskAction -Principal \$taskPrincipal -Trigger \$taskTrigger -Settings \$taskSettings
+    Register-ScheduledTask -TaskName \$taskName -InputObject \$task -Force
+}\" > user_data_script.ps1
 
 user_data_base64=$(base64 -w 0 user_data_script.ps1)
 
-echo "Khởi tạo các phiên bản EC2..."
+# Khởi tạo các phiên bản EC2...
 for region in "${!region_image_map[@]}"; do
     echo "Đang xử lý region: $region"
     
@@ -68,26 +70,16 @@ for region in "${!region_image_map[@]}"; do
     key_name="MyCustomKeyPair"
     key_path="${key_name}.pem"
     
-    # Kiểm tra xem key pair đã tồn tại chưa
-    if ! aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
-        echo "Tạo keypair mới: $key_name"
-        aws ec2 create-key-pair \
-            --key-name "$key_name" \
-            --region "$region" \
-            --query "KeyMaterial" \
-            --output text > "$key_path"
-        chmod 400 "$key_path"
-    else
-        echo "Key pair $key_name đã tồn tại trong region $region."
-    fi
-
+    # Kiểm tra và tạo key pair nếu chưa có
+    create_keypair "$region"
+    
     security_group_name="${region}_security_group"
     
     # Tạo security group nếu chưa tồn tại
-    if ! aws ec2 describe-security-groups --region "$region" --group-names "$security_group" &> /dev/null; then
+    if ! aws ec2 describe-security-groups --region "$region" --group-names "$security_group_name" &> /dev/null; then
         echo "Tạo Security Group trong $region"
         sg_id=$(aws ec2 create-security-group \
-            --group-name "$security_group" \
+            --group-name "$security_group_name" \
             --description "Security group cho MyCustom miner" \
             --region "$region" \
             --query "GroupId" \
@@ -99,29 +91,16 @@ for region in "${!region_image_map[@]}"; do
             --port 3389 \
             --cidr 0.0.0.0/0 \
             --region "$region"
-        echo "Đã mở cổng RDP (3389) cho Security Group $security_group"
+        echo "Đã mở cổng RDP (3389) cho Security Group $security_group_name"
     else
         sg_id=$(aws ec2 describe-security-groups \
             --region "$region" \
-            --filters Name=group-name,Values="$security_group" \
+            --filters Name=group-name,Values="$security_group_name" \
             --query "SecurityGroups[0].GroupId" \
             --output text)
     fi
-
-    echo "Sử dụng Security Group ID $sg_id trong $region"
     
-    # Kiểm tra nếu key pair đã tồn tại, nếu chưa thì tạo mới
-    if ! aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" &>/dev/null; then
-        echo "Tạo key pair mới: $key_name"
-        aws ec2 create-key-pair \
-            --key-name "$key_name" \
-            --query 'KeyMaterial' \
-            --output text \
-            --region "$region" > "$key_path"
-        chmod 400 "$key_path"
-    else
-        echo "Key pair $key_name đã tồn tại."
-    fi
+    echo "Sử dụng Security Group ID $sg_id trong $region"
     
     # Lấy subnet ID
     subnet_id=$(aws ec2 describe-subnets --region "$region" --query "Subnets[0].SubnetId" --output text)
@@ -139,7 +118,7 @@ for region in "${!region_image_map[@]}"; do
         --key-name "$key_name" \
         --security-group-ids "$sg_id" \
         --subnet-id "$subnet_id" \
-        --user-data "file://user_data.txt" \
+        --user-data "file://user_data_script.ps1" \
         --region "$region" \
         --query "Instances[0].InstanceId" \
         --output text)
