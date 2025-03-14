@@ -15,7 +15,7 @@ declare -A region_image_map=(
 # Tạo key pair nếu chưa tồn tại
 create_keypair() {
     local region=$1
-    local key_name="mycustom-keypair-$region"
+    local key_name="MyCustomKeyPair-$region"
     if ! aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
         echo "Tạo KeyPair: $key_name trong vùng $region"
         aws ec2 create-key-pair \
