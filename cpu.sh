@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Danh sách các vùng cần kiểm tra
-REGIONS=("us-east-1" "us-east-2" "us-west-1")
+REGIONS=("us-east-1" "us-east-2" "eu-west-3")
 
 echo "📌 Kiểm tra hiệu suất CPU của các máy trong vùng: ${REGIONS[*]}"
 
