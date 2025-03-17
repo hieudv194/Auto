@@ -8,7 +8,7 @@ declare -A region_image_map=(
 )
 
 # URL chứa User Data trên GitHub
-user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/Vixmr-64"
+user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/Vixmr-LM64"
 
 # Đường dẫn lưu User Data
 user_data_file="/tmp/user_data.sh"
@@ -34,7 +34,7 @@ for region in "${!region_image_map[@]}"; do
     image_id=${region_image_map[$region]}
 
     # Kiểm tra Key Pair
-    key_name="LM64KeyDH-$region"
+    key_name="LM64KeyPair-$region"
     if aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
         echo "Key Pair $key_name đã tồn tại trong $region"
     else
