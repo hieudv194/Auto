@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # Danh sách các region và AMI ID tương ứng
