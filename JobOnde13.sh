@@ -5,7 +5,7 @@
 # Yêu cầu: AWS CLI đã cài đặt và cấu hình với quyền Administrator
 
 # ------------------------- CẤU HÌNH -------------------------
-REGION="us-west-2"  # Đã sửa từ us-east-1 thành us-east-2 theo thông báo lỗi
+REGION="us-east-1"  # Đã sửa từ us-east-1 thành us-east-2 theo thông báo lỗi
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ENVIRONMENT_NAME="MoneroMiningBatch-OnDemand-Fixed"
 SERVICE_ROLE_NAME="AWSBatchServiceRole-$ENVIRONMENT_NAME"
