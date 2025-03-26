@@ -9,9 +9,9 @@ ENVIRONMENT_NAME="MoneroMining-OnDemand"
 
 # Cấu hình Instance (On-Demand)
 INSTANCE_TYPES="c7a.2xlarge"  # AMD EPYC 7th Gen, 8 vCPU, 16GB RAM
-MIN_VCPUS=0
-MAX_VCPUS=32                   # Giới hạn để tránh chi phí vượt mức
-DESIRED_VCPUS=4
+MIN_VCPUS=8
+MAX_VCPUS=8                  # Giới hạn để tránh chi phí vượt mức
+DESIRED_VCPUS=8
 
 # Cấu hình Mining (THAY ĐỔI THÔNG TIN CỦA BẠN)
 WALLET_ADDRESS="88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV"
