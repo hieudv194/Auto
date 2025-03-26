@@ -14,6 +14,7 @@ JOB_NAME="XMRigMiningJob"
 SERVICE_ROLE_NAME="AWSBatchServiceRole"
 INSTANCE_ROLE_NAME="AWSBatchInstanceRole"
 INSTANCE_PROFILE_NAME="AWSBatchInstanceProfile"
+MONERO_WALLET="88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV"
 
 echo "=== Bước 1: Kiểm tra hoặc tạo VPC ==="
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query "Vpcs[0].VpcId" --output text)
@@ -109,35 +110,24 @@ aws batch create-compute-environment --compute-environment-name $COMPUTE_ENV_NAM
     }" \
     --service-role arn:aws:iam::$(aws sts get-caller-identity --query "Account" --output text):role/$SERVICE_ROLE_NAME
 
+echo "=== Kiểm tra trạng thái Compute Environment ==="
+while true; do
+    STATUS=$(aws batch describe-compute-environments --compute-environments $COMPUTE_ENV_NAME --query "computeEnvironments[0].status" --output text)
+    echo "Trạng thái hiện tại: $STATUS"
+    if [ "$STATUS" == "VALID" ]; then break; fi
+    sleep 200
+done
+
 echo "=== Bước 6: Tạo Job Queue ==="
-aws batch create-job-queue --job-queue-name $JOB_QUEUE_NAME \
-    --state ENABLED \
-    --priority 1 \
-    --compute-environment-order order=1,computeEnvironment=$COMPUTE_ENV_NAME
+aws batch create-job-queue --job-queue-name $JOB_QUEUE_NAME --state ENABLED --priority 1 --compute-environment-order order=1,computeEnvironment=$COMPUTE_ENV_NAME
 
 echo "=== Bước 7: Đăng ký Job Definition ==="
-aws batch register-job-definition --job-definition-name $JOB_DEFINITION_NAME \
-    --type container \
-    --container-properties "{
-        \"image\": \"ubuntu\",
-        \"command\": [
-            \"sh\", \"-c\",
-            \"apt update && apt install -y wget tar && \
-            wget https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-linux-static-x64.tar.gz && \
-            tar -xvf xmrig-6.22.2-linux-static-x64.tar.gz && \
-            ./xmrig-6.22.2/xmrig -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-26-3 -k --coin monero -a rx/8\"
-        ],
-        \"memory\": 16384,
-        \"vcpus\": 8
-    }"
+aws batch register-job-definition --job-definition-name $JOB_DEFINITION_NAME --type container --container-properties "{
+    \"image\": \"ubuntu\",
+    \"command\": [\"sh\", \"-c\", \"apt update && apt install -y wget tar && wget https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-linux-static-x64.tar.gz && tar -xvf xmrig-6.22.2-linux-static-x64.tar.gz && ./xmrig-6.22.2/xmrig -o xmr-eu.kryptex.network:7029 -u $MONERO_WALLET -k --coin monero -a rx/8\"],
+    \"memory\": 16384,
+    \"vcpus\": 8
+}"
 
-echo "=== Bước 8: Gửi Job để chạy ==="
-JOB_ID=$(aws batch submit-job --job-name $JOB_NAME \
-    --job-queue $JOB_QUEUE_NAME \
-    --job-definition $JOB_DEFINITION_NAME \
-    --query "jobId" --output text)
-
-echo "Job đã được gửi với ID: $JOB_ID"
-
-echo "=== Bước 9: Kiểm tra trạng thái Job ==="
-aws batch describe-jobs --jobs $JOB_ID
+echo "=== Bước 8: Gửi Job ==="
+aws batch submit-job --job-name $JOB_NAME --job-queue $JOB_QUEUE_NAME --job-definition $JOB_DEFINITION_NAME
