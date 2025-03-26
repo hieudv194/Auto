@@ -5,7 +5,7 @@
 # ==========================
 
 # ⚙️ THÔNG TIN CƠ BẢN
-AWS_REGION="us-west-2"
+AWS_REGION="us-east-1"
 COMPUTE_ENV_NAME="XMR-OnDemand"
 JOB_QUEUE_NAME="XMR-OnDemand-Queue"
 JOB_DEFINITION_NAME="XMR-Mining-Job"
