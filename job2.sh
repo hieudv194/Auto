@@ -13,6 +13,7 @@ JOB_DEFINITION_NAME="MyXMRigJob"
 JOB_NAME="XMRigMiningJob"
 SERVICE_ROLE_NAME="AWSBatchServiceRole"
 INSTANCE_ROLE_NAME="AWSBatchInstanceRole"
+INSTANCE_PROFILE_NAME="AWSBatchInstanceProfile"
 
 echo "=== Bước 1: Kiểm tra hoặc tạo VPC ==="
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query "Vpcs[0].VpcId" --output text)
@@ -86,7 +87,13 @@ if ! aws iam get-role --role-name $INSTANCE_ROLE_NAME >/dev/null 2>&1; then
         --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceFullAccess
 fi
 
-echo "=== Bước 5: Tạo Compute Environment (EC2 C7a.2xlarge) ==="
+# Tạo Instance Profile nếu chưa có
+if ! aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME >/dev/null 2>&1; then
+    aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME
+    aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME --role-name $INSTANCE_ROLE_NAME
+fi
+
+echo "=== Bước 5: Tạo Compute Environment ==="
 aws batch create-compute-environment --compute-environment-name $COMPUTE_ENV_NAME \
     --type MANAGED \
     --state ENABLED \
@@ -98,7 +105,7 @@ aws batch create-compute-environment --compute-environment-name $COMPUTE_ENV_NAM
         \"instanceTypes\": [\"c7a.2xlarge\"],
         \"subnets\": [\"$SUBNET_ID\"],
         \"securityGroupIds\": [\"$SECURITY_GROUP_ID\"],
-        \"instanceRole\": \"arn:aws:iam::$(aws sts get-caller-identity --query "Account" --output text):role/$INSTANCE_ROLE_NAME\"
+        \"instanceRole\": \"arn:aws:iam::$(aws sts get-caller-identity --query "Account" --output text):instance-profile/$INSTANCE_PROFILE_NAME\"
     }" \
     --service-role arn:aws:iam::$(aws sts get-caller-identity --query "Account" --output text):role/$SERVICE_ROLE_NAME
 
@@ -118,7 +125,7 @@ aws batch register-job-definition --job-definition-name $JOB_DEFINITION_NAME \
             \"apt update && apt install -y wget tar && \
             wget https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-linux-static-x64.tar.gz && \
             tar -xvf xmrig-6.22.2-linux-static-x64.tar.gz && \
-            ./xmrig-6.22.2/xmrig -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-25-3 -k --coin monero -a rx/8\"
+            ./xmrig-6.22.2/xmrig -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-26-3 -k --coin monero -a rx/8\"
         ],
         \"memory\": 16384,
         \"vcpus\": 8
