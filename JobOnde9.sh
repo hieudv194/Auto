@@ -24,7 +24,7 @@ aws batch create-compute-environment \
   --compute-environment-name $COMPUTE_ENV_NAME \
   --type MANAGED \
   --state ENABLED \
-  --compute-resources "type=EC2,allocationStrategy=BEST_FIT_PROGRESSIVE,minvCpus=0,maxvCpus=16,instanceTypes=c5.4xlarge,subnets=[$SUBNET_ID],securityGroupIds=[$SECURITY_GROUP_ID],instanceRole=ecsInstanceRole" \
+  --compute-resources "type=EC2,allocationStrategy=BEST_FIT_PROGRESSIVE,minvCpus=8,maxvCpus=8,instanceTypes=c7a.2xlarge,subnets=[$SUBNET_ID],securityGroupIds=[$SECURITY_GROUP_ID],instanceRole=ecsInstanceRole" \
   --region $AWS_REGION
 
 # ⏳ CHỜ COMPUTE ENVIRONMENT SẴN SÀNG
