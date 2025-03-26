@@ -51,11 +51,21 @@ fi
 
 echo "=== Bước 4: Kiểm tra & Xóa Compute Environment nếu đã tồn tại ==="
 if aws batch describe-compute-environments --compute-environments $COMPUTE_ENV_NAME >/dev/null 2>&1; then
-    echo "Compute Environment đã tồn tại. Đang xóa..."
-    aws batch update-job-queue --job-queue $JOB_QUEUE_NAME --state DISABLED || true
-    aws batch delete-job-queue --job-queue $JOB_QUEUE_NAME || true
+    echo "Compute Environment đã tồn tại. Đang tắt..."
+    aws batch update-compute-environment --compute-environment $COMPUTE_ENV_NAME --state DISABLED
+
+    echo "Chờ Compute Environment về trạng thái DISABLED..."
+    while true; do
+        STATUS=$(aws batch describe-compute-environments --compute-environments $COMPUTE_ENV_NAME --query "computeEnvironments[0].status" --output text)
+        echo "Trạng thái hiện tại: $STATUS"
+        if [ "$STATUS" == "DISABLED" ]; then break; fi
+        sleep 5
+    done
+
+    echo "Xóa Compute Environment..."
     aws batch delete-compute-environment --compute-environment $COMPUTE_ENV_NAME
-    echo "Compute Environment đã được xóa."
+else
+    echo "Compute Environment chưa tồn tại, bỏ qua bước xóa."
 fi
 
 echo "=== Bước 5: Tạo Compute Environment ==="
@@ -77,7 +87,7 @@ while true; do
     STATUS=$(aws batch describe-compute-environments --compute-environments $COMPUTE_ENV_NAME --query "computeEnvironments[0].status" --output text)
     echo "Trạng thái hiện tại: $STATUS"
     if [ "$STATUS" == "VALID" ]; then break; fi
-    sleep 10
+    sleep 200
 done
 
 echo "=== Bước 6: Tạo Job Queue ==="
