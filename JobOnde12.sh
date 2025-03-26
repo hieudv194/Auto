@@ -1,24 +1,22 @@
 #!/bin/bash
 
 # Script tạo AWS Batch hoàn chỉnh từ đầu cho mining Monero
-# Sử dụng c7a.2xlarge OnDemand
-# Đã sửa các lỗi và kiểm tra kỹ lưỡng
+# Sử dụng c7a.2xlarge OnDemand - ĐÃ SỬA LỖI
 # Yêu cầu: AWS CLI đã cài đặt và cấu hình với quyền Administrator
 
 # ------------------------- CẤU HÌNH -------------------------
-REGION="us-east-2"
+REGION="us-west-2"  # Đã sửa từ us-east-1 thành us-east-2 theo thông báo lỗi
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-ENVIRONMENT_NAME="MoneroMiningBatch-OnDemand"
+ENVIRONMENT_NAME="MoneroMiningBatch-OnDemand-Fixed"
 SERVICE_ROLE_NAME="AWSBatchServiceRole-$ENVIRONMENT_NAME"
 ECS_INSTANCE_ROLE_NAME="ecsInstanceRole-$ENVIRONMENT_NAME"
 BATCH_INSTANCE_ROLE_NAME="AWSBatchInstanceRole-$ENVIRONMENT_NAME"
 
 # Cấu hình instance
 INSTANCE_TYPES="c7a.2xlarge"  # AMD EPYC, 8 vCPU, 16GB RAM - tốt cho mining
-MIN_VCPUS=8
-MAX_VCPUS=8
-DESIRED_VCPUS=8
-SPOT_PERCENTAGE=0  # Sử dụng 0% Spot để dùng OnDemand
+MIN_VCPUS=0
+MAX_VCPUS=256
+DESIRED_VCPUS=4
 
 # Cấu hình mạng
 VPC_CIDR="10.0.0.0/16"
@@ -26,7 +24,7 @@ PUBLIC_SUBNET_CIDR="10.0.1.0/24"
 
 # Cấu hình mining - THAY THẾ BẰNG THÔNG TIN CỦA BẠN
 WALLET_ADDRESS="88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV"
-WORKER_ID="LM8-25-3-OnDemand"
+WORKER_ID="LM8-25-3-OnDemand-Fixed"
 MINING_POOL="xmr-eu.kryptex.network:7029"
 
 # ------------------------- TẠO IAM ROLES -------------------------
@@ -153,11 +151,34 @@ COMPUTE_ENV_ARN=$(aws batch create-compute-environment \
 
 echo " - Compute Environment ARN: $COMPUTE_ENV_ARN"
 
-# Chờ Compute Environment active
-echo " - Đợi Compute Environment active..."
-aws batch wait compute-environment-valid \
-  --compute-environments $ENVIRONMENT_NAME-ComputeEnv \
-  --region $REGION
+# Chờ Compute Environment active (tối đa 5 phút)
+echo " - Đợi Compute Environment active (có thể mất vài phút)..."
+MAX_RETRIES=30
+COUNT=0
+while [ $COUNT -lt $MAX_RETRIES ]; do
+  STATUS=$(aws batch describe-compute-environments \
+    --compute-environments $ENVIRONMENT_NAME-ComputeEnv \
+    --region $REGION \
+    --query "computeEnvironments[0].status" \
+    --output text)
+  
+  if [ "$STATUS" == "VALID" ]; then
+    echo " - Compute Environment đã sẵn sàng!"
+    break
+  elif [ "$STATUS" == "CREATING" ]; then
+    echo " - Đang tạo... ($((COUNT*10)) giây đã trôi qua"
+    sleep 10
+    ((COUNT++))
+  else
+    echo " - Lỗi: Trạng thái không mong muốn - $STATUS"
+    exit 1
+  fi
+done
+
+if [ $COUNT -eq $MAX_RETRIES ]; then
+  echo " - Lỗi: Quá thời gian chờ Compute Environment active"
+  exit 1
+fi
 
 # ------------------------- TẠO JOB QUEUE -------------------------
 echo "4. Tạo Job Queue..."
@@ -174,9 +195,32 @@ echo " - Job Queue ARN: $JOB_QUEUE_ARN"
 
 # Chờ Job Queue active
 echo " - Đợi Job Queue active..."
-aws batch wait job-queue-valid \
-  --job-queues $ENVIRONMENT_NAME-Queue \
-  --region $REGION
+MAX_RETRIES=30
+COUNT=0
+while [ $COUNT -lt $MAX_RETRIES ]; do
+  STATUS=$(aws batch describe-job-queues \
+    --job-queues $ENVIRONMENT_NAME-Queue \
+    --region $REGION \
+    --query "jobQueues[0].status" \
+    --output text)
+  
+  if [ "$STATUS" == "VALID" ]; then
+    echo " - Job Queue đã sẵn sàng!"
+    break
+  elif [ "$STATUS" == "CREATING" ]; then
+    echo " - Đang tạo... ($((COUNT*10)) giây đã trôi qua"
+    sleep 10
+    ((COUNT++))
+  else
+    echo " - Lỗi: Trạng thái không mong muốn - $STATUS"
+    exit 1
+  fi
+done
+
+if [ $COUNT -eq $MAX_RETRIES ]; then
+  echo " - Lỗi: Quá thời gian chờ Job Queue active"
+  exit 1
+fi
 
 # ------------------------- TẠO JOB DEFINITION -------------------------
 echo "5. Tạo Job Definition..."
@@ -212,7 +256,7 @@ echo " - Job Definition ARN: $JOB_DEFINITION_ARN"
 # ------------------------- GỬI JOB MINING -------------------------
 echo "6. Gửi job mining..."
 JOB_ID=$(aws batch submit-job \
-  --job-name monero-mining-job-$(date +%s) \
+  --job-name "monero-mining-job-$(date +%s)" \
   --job-queue $ENVIRONMENT_NAME-Queue \
   --job-definition $ENVIRONMENT_NAME-MoneroMiner \
   --region $REGION \
