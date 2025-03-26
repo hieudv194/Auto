@@ -83,7 +83,7 @@ if ! aws iam get-role --role-name $INSTANCE_ROLE_NAME >/dev/null 2>&1; then
         }'
 
     aws iam attach-role-policy --role-name $INSTANCE_ROLE_NAME \
-        --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerServiceforEC2Role
+        --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceFullAccess
 fi
 
 echo "=== Bước 5: Tạo Compute Environment (EC2 C7a.2xlarge) ==="
