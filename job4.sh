@@ -2,7 +2,6 @@
 
 set -e  # Dừng script nếu có lỗi
 
-# Thiết lập biến
 AWS_REGION="us-east-1"
 VPC_NAME="MyVPC"
 SUBNET_NAME="MySubnet"
@@ -50,48 +49,13 @@ else
     echo "Sử dụng Security Group có sẵn: $SECURITY_GROUP_ID"
 fi
 
-echo "=== Bước 4: Tạo IAM Roles ==="
-
-# Tạo Service Role cho AWS Batch nếu chưa có
-if ! aws iam get-role --role-name $SERVICE_ROLE_NAME >/dev/null 2>&1; then
-    aws iam create-role --role-name $SERVICE_ROLE_NAME \
-        --assume-role-policy-document '{
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": { "Service": "batch.amazonaws.com" },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        }'
-    
-    aws iam attach-role-policy --role-name $SERVICE_ROLE_NAME \
-        --policy-arn arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
-fi
-
-# Tạo Instance Role cho EC2 nếu chưa có
-if ! aws iam get-role --role-name $INSTANCE_ROLE_NAME >/dev/null 2>&1; then
-    aws iam create-role --role-name $INSTANCE_ROLE_NAME \
-        --assume-role-policy-document '{
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": { "Service": "ec2.amazonaws.com" },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        }'
-
-    aws iam attach-role-policy --role-name $INSTANCE_ROLE_NAME \
-        --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceFullAccess
-fi
-
-# Tạo Instance Profile nếu chưa có
-if ! aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME >/dev/null 2>&1; then
-    aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME
-    aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE_NAME --role-name $INSTANCE_ROLE_NAME
+echo "=== Bước 4: Kiểm tra & Xóa Compute Environment nếu đã tồn tại ==="
+if aws batch describe-compute-environments --compute-environments $COMPUTE_ENV_NAME >/dev/null 2>&1; then
+    echo "Compute Environment đã tồn tại. Đang xóa..."
+    aws batch update-job-queue --job-queue $JOB_QUEUE_NAME --state DISABLED || true
+    aws batch delete-job-queue --job-queue $JOB_QUEUE_NAME || true
+    aws batch delete-compute-environment --compute-environment $COMPUTE_ENV_NAME
+    echo "Compute Environment đã được xóa."
 fi
 
 echo "=== Bước 5: Tạo Compute Environment ==="
@@ -105,17 +69,15 @@ aws batch create-compute-environment --compute-environment-name $COMPUTE_ENV_NAM
         \"desiredvCpus\": 4,
         \"instanceTypes\": [\"c7a.2xlarge\"],
         \"subnets\": [\"$SUBNET_ID\"],
-        \"securityGroupIds\": [\"$SECURITY_GROUP_ID\"],
-        \"instanceRole\": \"arn:aws:iam::$(aws sts get-caller-identity --query "Account" --output text):instance-profile/$INSTANCE_PROFILE_NAME\"
-    }" \
-    --service-role arn:aws:iam::$(aws sts get-caller-identity --query "Account" --output text):role/$SERVICE_ROLE_NAME
+        \"securityGroupIds\": [\"$SECURITY_GROUP_ID\"]
+    }"
 
 echo "=== Kiểm tra trạng thái Compute Environment ==="
 while true; do
     STATUS=$(aws batch describe-compute-environments --compute-environments $COMPUTE_ENV_NAME --query "computeEnvironments[0].status" --output text)
     echo "Trạng thái hiện tại: $STATUS"
     if [ "$STATUS" == "VALID" ]; then break; fi
-    sleep 200
+    sleep 10
 done
 
 echo "=== Bước 6: Tạo Job Queue ==="
