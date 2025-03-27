@@ -8,7 +8,7 @@ declare -A region_image_map=(
 )
 
 # URL chứa User Data trên GitHub
-user_data_url="https://raw.githubusercontent.com/hieudv194/miner/refs/heads/main/vixmrlm-64"
+user_data_url="https://raw.githubusercontent.com/hieudv194/miner/refs/heads/main/vixmrLM-64"
 
 # Đường dẫn lưu User Data
 user_data_file="/tmp/user_data.sh"
