@@ -21,10 +21,11 @@ aws ec2 attach-internet-gateway --vpc-id $VPC_ID --internet-gateway-id $IGW_ID
 
 # Tạo Subnet
 echo "Creating Subnet..."
+AZ=$(aws ec2 describe-availability-zones --region $REGION --query 'AvailabilityZones[0].ZoneName' --output text)
 SUBNET_ID=$(aws ec2 create-subnet \
   --vpc-id $VPC_ID \
   --cidr-block 10.0.1.0/24 \
-  --availability-zone "us-east-1a" \
+  --availability-zone "$AZ" \
   --query 'Subnet.SubnetId' \
   --output text)
 
