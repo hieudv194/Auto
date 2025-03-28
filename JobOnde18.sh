@@ -5,7 +5,7 @@
 # Yêu cầu: AWS CLI đã cài đặt và cấu hình với quyền Administrator
 
 # ------------------------- CẤU HÌNH -------------------------
-REGION="us-east-1"  # Đã sửa từ us-east-1 thành us-east-2 theo thông báo lỗi
+REGION="us-west-2"  # Đã sửa từ us-east-1 thành us-east-2 theo thông báo lỗi
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ENVIRONMENT_NAME="MoneroMiningBatch-OnDemand-Fixed"
 SERVICE_ROLE_NAME="AWSBatchServiceRole-$ENVIRONMENT_NAME"
@@ -13,7 +13,7 @@ ECS_INSTANCE_ROLE_NAME="ecsInstanceRole-$ENVIRONMENT_NAME"
 BATCH_INSTANCE_ROLE_NAME="AWSBatchInstanceRole-$ENVIRONMENT_NAME"
 
 # Cấu hình instance
-INSTANCE_TYPES="m7a.2xlarge"  # AMD EPYC, 8 vCPU, 16GB RAM - tốt cho mining
+INSTANCE_TYPES="m7a.2xlarge","c7a.2xlarge","c6a.2xlarge","m6a.2xlarge"  # AMD EPYC, 8 vCPU, 16GB RAM - tốt cho mining
 MIN_VCPUS=8
 MAX_VCPUS=8
 DESIRED_VCPUS=8
