@@ -3,7 +3,7 @@ set -e
 
 REGION="us-east-1"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-INSTANCE_TYPE="c7a.2xlarge"
+INSTANCE_TYPE="c6a.xlarge"
 VPC_NAME="XMRig-Mining-VPC"
 JOB_NAME="xmrig-mining-job"
 
@@ -106,7 +106,7 @@ COMPUTE_ENV_ARN=$(aws batch create-compute-environment \
   --compute-resources "{
     \"type\": \"EC2\",
     \"minvCpus\": 0,
-    \"maxvCpus\": 8,
+    \"maxvCpus\": 4,
     \"desiredvCpus\": 0,
     \"instanceTypes\": [\"$INSTANCE_TYPE\"],
     \"subnets\": [\"$SUBNET_ID\"],
