@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REGION="us-east-1"
+REGION="us-east-2"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 INSTANCE_TYPE="c6a.xlarge"
 VPC_NAME="XMRig-Mining-VPC"
