@@ -50,10 +50,10 @@ aws ec2 authorize-security-group-ingress \
   --port 22 \
   --cidr 0.0.0.0/0
 
-# Tạo IAM Roles
+# Tạo IAM Roles - PHẦN ĐÃ SỬA LỖI
 echo "Creating IAM Roles..."
 
-# ECS Task Execution Role
+# 1. ECS Task Execution Role
 aws iam create-role --role-name ecsTaskExecutionRole --assume-role-policy-document '{
   "Version": "2012-10-17",
   "Statement": [{
@@ -67,7 +67,7 @@ aws iam attach-role-policy \
   --role-name ecsTaskExecutionRole \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-# AWS Batch Service Role
+# 2. AWS Batch Service Role
 aws iam create-role --role-name AWSBatchServiceRole --assume-role-policy-document '{
   "Version": "2012-10-17",
   "Statement": [{
@@ -81,7 +81,7 @@ aws iam attach-role-policy \
   --role-name AWSBatchServiceRole \
   --policy-arn arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
 
-# EC2 Instance Role
+# 3. EC2 Instance Role (SỬA LỖI CHÍNH Ở ĐÂY)
 aws iam create-role --role-name ecsInstanceRole --assume-role-policy-document '{
   "Version": "2012-10-17",
   "Statement": [{
@@ -95,7 +95,11 @@ aws iam attach-role-policy \
   --role-name ecsInstanceRole \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
 
-aws iam create-instance-profile --role-name ecsInstanceRole
+# Tạo Instance Profile (THÊM DÒNG NÀY)
+aws iam create-instance-profile --instance-profile-name ecsInstanceProfile
+aws iam add-role-to-instance-profile \
+  --instance-profile-name ecsInstanceProfile \
+  --role-name ecsInstanceRole
 
 # Tạo Compute Environment
 echo "Creating Compute Environment..."
