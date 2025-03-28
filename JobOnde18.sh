@@ -13,10 +13,10 @@ ECS_INSTANCE_ROLE_NAME="ecsInstanceRole-$ENVIRONMENT_NAME"
 BATCH_INSTANCE_ROLE_NAME="AWSBatchInstanceRole-$ENVIRONMENT_NAME"
 
 # Cấu hình instance
-INSTANCE_TYPES="m7a.2xlarge","c7a.2xlarge","c6a.2xlarge","m6a.2xlarge"  # AMD EPYC, 8 vCPU, 16GB RAM - tốt cho mining
-MIN_VCPUS=8
-MAX_VCPUS=8
-DESIRED_VCPUS=8
+INSTANCE_TYPES="c7a.xlarge"  # AMD EPYC, 8 vCPU, 16GB RAM - tốt cho mining
+MIN_VCPUS=4
+MAX_VCPUS=4
+DESIRED_VCPUS=4
 
 # Cấu hình mạng
 VPC_CIDR="10.0.0.0/16"
