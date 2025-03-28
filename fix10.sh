@@ -2,7 +2,7 @@
 set -e
 
 # Config
-REGION="us-east-2"
+REGION="us-west-2"
 INSTANCE_TYPE="c6a.xlarge"
 VPC_NAME="XMRig-Mining-VPC"
 JOB_NAME="xmrig-mining-job"
