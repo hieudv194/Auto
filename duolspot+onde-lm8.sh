@@ -4,11 +4,10 @@
 declare -A region_image_map=(
     ["us-east-1"]="ami-0e2c8caa4b6378d8c"
     ["us-west-2"]="ami-05d38da78ce859165"
-    ["us-east-2"]="ami-0cb91c7de36eed2cb"
 )
 
 # URL chứa User Data trên GitHub
-user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/Vixmr-8"
+user_data_url="https://raw.githubusercontent.com/hieudv194/Auto/refs/heads/main/Vixmr-LM64"
 
 # Đường dẫn lưu User Data
 user_data_file="/tmp/user_data.sh"
@@ -34,7 +33,7 @@ for region in "${!region_image_map[@]}"; do
     image_id=${region_image_map[$region]}
 
     # Kiểm tra Key Pair
-    key_name="Lm8KeyPair-$region"
+    key_name="KeyPair-$region"
     if aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
         echo "Key Pair $key_name đã tồn tại trong $region"
     else
@@ -86,28 +85,13 @@ for region in "${!region_image_map[@]}"; do
 
     echo "Sử dụng Subnet ID $subnet_id trong Auto Scaling Group của $region"
 
-    ##================= TẠO INSTANCE ON-DEMAND =================##
-    instance_id=$(aws ec2 run-instances \
-        --image-id "$image_id" \
-        --count 1 \
-        --instance-type c7a.2xlarge \
-        --key-name "$key_name" \
-        --security-group-ids "$sg_id" \
-        --user-data "$user_data_base64" \
-        --subnet-id "$subnet_id" \
-        --region "$region" \
-        --query "Instances[0].InstanceId" \
-        --output text)
-
-    echo "Đã tạo Instance On-Demand $instance_id trong $region với Key Pair $key_name và Security Group $sg_name"
-
     ##================= TẠO INSTANCE SPOT (PERSISTENT) =================##
     spot_request_id=$(aws ec2 request-spot-instances \
         --instance-count 1 \
         --type "one-time" \
         --launch-specification "{
             \"ImageId\": \"$image_id\",
-            \"InstanceType\": \"c7a.2xlarge\",
+            \"InstanceType\": \"c7a.16xlarge\",
             \"KeyName\": \"$key_name\",
             \"SecurityGroupIds\": [\"$sg_id\"],
             \"SubnetId\": \"$subnet_id\",
