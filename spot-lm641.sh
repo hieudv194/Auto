@@ -21,7 +21,7 @@ curl -sL "$user_data_url" -o "$user_data_file"
 [[ -s "$user_data_file" ]] || { echo "❌ Cannot download user‑data"; exit 1; }
 user_data_b64=$(base64 -w0 "$user_data_file")
 
-# ========= VÒNG LẶP QUA REGION =========
+# ========= VÒNG LẶP QUA CÁC REGION =========
 for region in "${!region_image_map[@]}"; do
   echo -e "\n🌎 Region: $region"
   image_id="${region_image_map[$region]}"
@@ -52,16 +52,18 @@ for region in "${!region_image_map[@]}"; do
     echo "🛡️  SG $sg_name exists ($sg_id)"
   fi
 
-  # mở SSH nếu cần
-  if ! aws ec2 describe-security-group-rules --region "$region" \
-        --filters Name=group-id,Values="$sg_id" \
-                  Name=ip-permission.from-port,Values=22 \
-                  Name=ip-permission.to-port,Values=22 \
-                  Name=ip-permission.cidr,Values=0.0.0.0/0 \
-        --query "SecurityGroupRules" --output text | grep -q . ; then
+  # ---- Mở SSH nếu cần ----
+  ssh_rule_exists=$(aws ec2 describe-security-groups --region "$region" \
+      --group-ids "$sg_id" \
+      --query "SecurityGroups[0].IpPermissions[?FromPort==\`22\` && ToPort==\`22\` && IpRanges[?CidrIp=='0.0.0.0/0']]" \
+      --output text)
+
+  if [[ -z "$ssh_rule_exists" ]]; then
     aws ec2 authorize-security-group-ingress --region "$region" \
       --group-id "$sg_id" --protocol tcp --port 22 --cidr 0.0.0.0/0
     echo "🔓 Opened SSH 22 on SG"
+  else
+    echo "➡️  SSH 22 already open"
   fi
 
   # ---- Chọn subnet(s) ----
@@ -70,7 +72,7 @@ for region in "${!region_image_map[@]}"; do
                 --query "Subnets[].SubnetId" --output text | tr '\t' ',')
   [[ -n "$subnet_ids" ]] || { echo "❌ No subnet in $region"; continue; }
 
-  # ---- Launch Template (tạo hoặc cập nhật) ----
+  # ---- Launch Template (tạo hoặc cập nhật) ----
   lt_id=$(aws ec2 describe-launch-templates --region "$region" \
           --launch-template-names "$lt_name" \
           --query "LaunchTemplates[0].LaunchTemplateId" --output text 2>/dev/null || echo "")
@@ -120,14 +122,14 @@ for region in "${!region_image_map[@]}"; do
            \"OnDemandPercentageAboveBaseCapacity\":0,
            \"SpotAllocationStrategy\":\"capacity-optimized\"
          }
-       }"
+       }" \
+      --tags "Key=Name,Value=Vixmr-Spot-$region"
   fi
 
-  # Bật Capacity Rebalance
+  # ---- Bật Capacity Rebalance ----
   aws autoscaling put-auto-scaling-group-capacity-rebalance --region "$region" \
       --auto-scaling-group-name "$asg_name" --enabled
   echo "✅ ASG $asg_name ready – will auto‑replace Spot instance when lost."
-
 done
 
 echo -e "\n🎉 Hoàn tất – mỗi region luôn duy trì 1 Spot Instance và tự động request lại khi bị thu hồi!"
