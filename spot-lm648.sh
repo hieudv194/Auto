@@ -33,7 +33,7 @@ for region in "${!region_image_map[@]}"; do
     image_id=${region_image_map[$region]}
 
     # Check if Key Pair exists
-    key_name="MrHieu-$region"
+    key_name="MrHieu1-$region"
     if aws ec2 describe-key-pairs --key-names "$key_name" --region "$region" > /dev/null 2>&1; then
         echo "Key Pair $key_name already exists in $region"
     else
@@ -113,7 +113,6 @@ for region in "${!region_image_map[@]}"; do
         --vpc-zone-identifier "$subnet_id" \
         --region $region
     echo "Auto Scaling Group $asg_name created in $region"
-done
 
 # Định nghĩa Launch Template cho từng vùng
 declare -A REGION_TEMPLATES
