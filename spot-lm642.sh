@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ========= CẤU HÌNH =========
+# ========== CẤU HÌNH ==========
 declare -A region_image_map=(
   ["us-east-1"]="ami-0e2c8caa4b6378d8c"
   ["us-west-2"]="ami-05d38da78ce859165"
@@ -15,22 +15,38 @@ min_size=1
 desired_size=1
 max_size=1
 
-# ========= TẢI USER‑DATA =========
-echo "📥 Downloading user‑data…"
+# ========== TẢI USER‑DATA ==========
+echo "📥 Downloading user‑data..."
 curl -sL "$user_data_url" -o "$user_data_file"
 [[ -s "$user_data_file" ]] || { echo "❌ Cannot download user‑data"; exit 1; }
 user_data_b64=$(base64 -w0 "$user_data_file")
 
-# ========= VÒNG LẶP QUA CÁC REGION =========
+# ========== VÒNG LẶP QUA REGION ==========
 for region in "${!region_image_map[@]}"; do
-  echo -e "\n🌎 Region: $region"
+  echo -e "\n🌎  REGION: $region"
   image_id="${region_image_map[$region]}"
   key_name="KeyPair-$region"
   sg_name="SG-Vixmr-$region"
   lt_name="LT-Vixmr-$region"
   asg_name="ASG-Vixmr-$region"
 
-  # ---- Key Pair ----
+  # ---- ĐẢM BẢO VPC & SUBNET ----
+  vpc_id=$(aws ec2 describe-vpcs --region "$region" \
+            --query "Vpcs[0].VpcId" --output text 2>/dev/null || echo "None")
+  if [[ -z "$vpc_id" || "$vpc_id" == "None" ]]; then
+    echo "ℹ️  No VPC found in $region – creating default VPC..."
+    vpc_id=$(aws ec2 create-default-vpc --region "$region" \
+              --query "Vpc.VpcId" --output text)
+    echo "✅  Default VPC created: $vpc_id"
+  fi
+
+  # Lấy tất cả subnet trong VPC vừa tìm được
+  subnet_ids=$(aws ec2 describe-subnets --region "$region" \
+                --filters Name=vpc-id,Values="$vpc_id" \
+                --query "Subnets[].SubnetId" --output text | tr '\t' ',')
+  [[ -n "$subnet_ids" ]] || { echo "❌ No subnet available in VPC $vpc_id"; continue; }
+
+  # ---- KEY PAIR ----
   if aws ec2 describe-key-pairs --region "$region" --key-names "$key_name" >/dev/null 2>&1; then
     echo "🔑 KeyPair $key_name exists"
   else
@@ -40,42 +56,36 @@ for region in "${!region_image_map[@]}"; do
     echo "✅ Created KeyPair $key_name"
   fi
 
-  # ---- Security Group ----
+  # ---- SECURITY GROUP ----
   sg_id=$(aws ec2 describe-security-groups --region "$region" \
-          --group-names "$sg_name" --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+          --group-names "$sg_name" --query "SecurityGroups[0].GroupId" \
+          --output text 2>/dev/null || echo "")
   if [[ -z "$sg_id" ]]; then
     sg_id=$(aws ec2 create-security-group --region "$region" \
             --group-name "$sg_name" --description "Vixmr SG" \
-            --query "GroupId" --output text)
+            --vpc-id "$vpc_id" --query "GroupId" --output text)
     echo "✅ Created SG $sg_name ($sg_id)"
   else
     echo "🛡️  SG $sg_name exists ($sg_id)"
   fi
 
-  # ---- Mở SSH nếu cần ----
-  ssh_rule_exists=$(aws ec2 describe-security-groups --region "$region" \
-      --group-ids "$sg_id" \
-      --query "SecurityGroups[0].IpPermissions[?FromPort==\`22\` && ToPort==\`22\` && IpRanges[?CidrIp=='0.0.0.0/0']]" \
-      --output text)
-
-  if [[ -z "$ssh_rule_exists" ]]; then
+  # ---- MỞ SSH NẾU CẦN ----
+  ssh_rule=$(aws ec2 describe-security-groups --region "$region" \
+               --group-ids "$sg_id" \
+               --query "SecurityGroups[0].IpPermissions[?FromPort==\`22\` && ToPort==\`22\` && IpRanges[?CidrIp=='0.0.0.0/0']]" \
+               --output text)
+  if [[ -z "$ssh_rule" ]]; then
     aws ec2 authorize-security-group-ingress --region "$region" \
-      --group-id "$sg_id" --protocol tcp --port 22 --cidr 0.0.0.0/0
+       --group-id "$sg_id" --protocol tcp --port 22 --cidr 0.0.0.0/0
     echo "🔓 Opened SSH 22 on SG"
   else
     echo "➡️  SSH 22 already open"
   fi
 
-  # ---- Chọn subnet(s) ----
-  subnet_ids=$(aws ec2 describe-subnets --region "$region" \
-                --filters Name=default-for-az,Values=false \
-                --query "Subnets[].SubnetId" --output text | tr '\t' ',')
-  [[ -n "$subnet_ids" ]] || { echo "❌ No subnet in $region"; continue; }
-
-  # ---- Launch Template (tạo hoặc cập nhật) ----
+  # ---- LAUNCH TEMPLATE ----
   lt_id=$(aws ec2 describe-launch-templates --region "$region" \
-          --launch-template-names "$lt_name" \
-          --query "LaunchTemplates[0].LaunchTemplateId" --output text 2>/dev/null || echo "")
+           --launch-template-names "$lt_name" \
+           --query "LaunchTemplates[0].LaunchTemplateId" --output text 2>/dev/null || echo "")
   if [[ -z "$lt_id" ]]; then
     lt_id=$(aws ec2 create-launch-template --region "$region" \
       --launch-template-name "$lt_name" \
@@ -96,7 +106,7 @@ for region in "${!region_image_map[@]}"; do
     echo "ℹ️  Launch Template $lt_name exists ($lt_id)"
   fi
 
-  # ---- Auto Scaling Group (tạo hoặc cập nhật) ----
+  # ---- AUTO SCALING GROUP ----
   if aws autoscaling describe-auto-scaling-groups --region "$region" \
          --auto-scaling-group-names "$asg_name" \
          --query "AutoScalingGroups[0].AutoScalingGroupName" --output text 2>/dev/null | grep -q "$asg_name"; then
@@ -113,23 +123,25 @@ for region in "${!region_image_map[@]}"; do
       --min-size "$min_size" --desired-capacity "$desired_size" --max-size "$max_size" \
       --vpc-zone-identifier "$subnet_ids" \
       --mixed-instances-policy "{
-         \"LaunchTemplate\":{
-           \"LaunchTemplateSpecification\":{
-             \"LaunchTemplateId\":\"$lt_id\",\"Version\":\"1\"
-           }
-         },
-         \"InstancesDistribution\":{
-           \"OnDemandPercentageAboveBaseCapacity\":0,
-           \"SpotAllocationStrategy\":\"capacity-optimized\"
-         }
-       }" \
+        \"LaunchTemplate\":{
+          \"LaunchTemplateSpecification\":{
+            \"LaunchTemplateId\":\"$lt_id\",
+            \"Version\":\"1\"
+          }
+        },
+        \"InstancesDistribution\":{
+          \"OnDemandPercentageAboveBaseCapacity\":0,
+          \"SpotAllocationStrategy\":\"capacity-optimized\"
+        }
+      }" \
       --tags "Key=Name,Value=Vixmr-Spot-$region"
   fi
 
-  # ---- Bật Capacity Rebalance ----
+  # ---- CAPACITY REBALANCE ----
   aws autoscaling put-auto-scaling-group-capacity-rebalance --region "$region" \
       --auto-scaling-group-name "$asg_name" --enabled
-  echo "✅ ASG $asg_name ready – will auto‑replace Spot instance when lost."
+
+  echo "✅  ASG $asg_name ready – auto‑replaces Spot instance when lost."
 done
 
-echo -e "\n🎉 Hoàn tất – mỗi region luôn duy trì 1 Spot Instance và tự động request lại khi bị thu hồi!"
+echo -e "\n🎉  DONE – Mỗi vùng luôn duy trì 1 Spot Instance và tự động request lại nếu bị thu hồi!"
