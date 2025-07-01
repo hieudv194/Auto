@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ========= CẤU HÌNH =========
+# ========= CẤU HÌNH ==========
 declare -A region_image_map=(
   ["us-east-1"]="ami-0e2c8caa4b6378d8c"
   ["us-west-2"]="ami-05d38da78ce859165"
@@ -15,7 +15,7 @@ min_size=1
 desired_size=1
 max_size=1
 
-# ========= TẢI USER-DATA =========
+# ========= TẢI USER‑DATA =========
 echo "📥 Downloading user‑data..."
 curl -sL "$user_data_url" -o "$user_data_file"
 [[ -s "$user_data_file" ]] || { echo "❌ Cannot download user‑data"; exit 1; }
@@ -30,11 +30,13 @@ for region in "${!region_image_map[@]}"; do
   lt_name="LT-Vixmr-$region"
   asg_name="ASG-Vixmr-$region"
 
-  # ---- ĐẢM BẢO VPC & SUBNET ----
-  vpc_id=$(aws ec2 describe-vpcs --region "$region" --query "Vpcs[0].VpcId" --output text 2>/dev/null || echo "None")
+  # ---- ĐẢM BẢO VPC + SUBNET ----
+  vpc_id=$(aws ec2 describe-vpcs --region "$region" \
+            --query "Vpcs[0].VpcId" --output text 2>/dev/null || echo "None")
   if [[ -z "$vpc_id" || "$vpc_id" == "None" ]]; then
     echo "ℹ️  No VPC in $region — creating default VPC..."
-    vpc_id=$(aws ec2 create-default-vpc --region "$region" --query "Vpc.VpcId" --output text)
+    vpc_id=$(aws ec2 create-default-vpc --region "$region" \
+              --query "Vpc.VpcId" --output text)
   fi
 
   subnet_ids=$(aws ec2 describe-subnets --region "$region" \
@@ -88,17 +90,14 @@ for region in "${!region_image_map[@]}"; do
         \"KeyName\":\"$key_name\",
         \"SecurityGroupIds\":[\"$sg_id\"],
         \"UserData\":\"$user_data_b64\",
-        \"NetworkInterfaces\":[{
-          \"DeviceIndex\":0,
-          \"AssociatePublicIpAddress\":true
-        }]
+        \"Monitoring\":{\"Enabled\":true}
       }" --query "LaunchTemplate.LaunchTemplateId" --output text)
     echo "🚀 Created Launch Template $lt_name ($lt_id)"
   else
     echo "ℹ️  Launch Template $lt_name exists ($lt_id)"
   fi
 
-  # ---- CHUẨN BỊ JSON MixedInstancesPolicy ----
+  # ---- MixedInstancesPolicy JSON ----
   mixed_policy_json=$(cat <<EOF
 {
   "LaunchTemplate": {
@@ -143,4 +142,4 @@ EOF
   echo "✅  ASG $asg_name ready – auto‑replaces Spot instance when lost."
 done
 
-echo -e "\n🎉  DONE – Mỗi vùng luôn duy trì 1 Spot Instance và tự động request lại khi bị thu hồi!"
+echo -e "\n🎉  DONE – Mỗi vùng luôn duy trì 1 Spot Instance và tự động request lại khi bị thu hồi!"
